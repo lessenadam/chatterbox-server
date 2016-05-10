@@ -1,6 +1,7 @@
 /* Import node's http module: */
 var http = require('http');
 var handleRequest = require('./request-handler');
+var fs = require('fs');
 
 
 // Every server needs to listen on a port with a unique number. The
@@ -27,6 +28,13 @@ var server = http.createServer(handleRequest.requestHandler);
 console.log('Listening on http://' + ip + ':' + port);
 server.listen(port, ip);
 
+
+fs.readFile('messages.txt', function (err, data) {
+  if (err) {
+    return console.error(err);
+  }
+  console.log("Asynchronous read: " + data.toString());
+});
 // To start this server, run:
 //
 //   node basic-server.js
