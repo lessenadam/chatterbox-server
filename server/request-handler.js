@@ -1,4 +1,5 @@
 var qs = require('querystring');
+var fs = require('fs');
 /*************************************************************
 
 You should implement your request handler function in this file.
@@ -13,7 +14,7 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 
-// var messageHolder = {'/classes/messages': [{username: 'message'}]};
+
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -49,12 +50,44 @@ var requestHandler = function(request, response) {
   // console.logs in your code.
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
+  // if options 
+  if (request.method === 'OPTIONS') {
+    response.writeHead(statusCode, headers);
+    response.end('Allow: GET, POST, OPTIONS');
+
+    // if standard page 
+  } else if (request.url === '/') {
+    fs.readFile('./client/index.html', function(err, data){
+      if(err) {
+        console.log('ERROR ---------------->', err);
+        response.writeHead(404);
+        response.write("Not Found!");
+      } else {
+        console.log(qs.parse(data));
+        response.writeHead(200, {'Content-Type': 'text/html'});
+        response.write(data);
+       }
+      response.end();
+    });
+
+  } else if (/^\/[a-zA-Z0-9_\/]*.css$/.test(request.url.toString())) {
+   
+    sendFileContent(response, request.url.toString().substring(1), "text/css");
 
 
-  if (!/\/classes/gi.test(request.url)) {
-    response.writeHead(errCode, headers);
-    response.end('Not a valid URL.');
-  } else if (request.method === 'POST') {
+  } else if (/^\/[a-zA-Z0-9_\/]*.js$/.test(request.url.toString())) {
+   
+    sendFileContent(response, request.url.toString().substring(1), "text/javascript");
+
+
+  } else if (/^\/[a-zA-Z0-9_\/]*.gif$/.test(request.url.toString())) {
+   
+    var img = fs.readFileSync('./client/' + request.url.toString().substring(1));
+    response.writeHead(200, {'Content-Type': 'image/gif'});
+    response.end(img, 'binary');
+
+    // Case if it's our URL and a POST
+  } else if (request.url.toString().indexOf('classes/messages') !== -1 &&  request.method === 'POST') {
     var requestBody = '';
 
     request.on('data', function(data) {
@@ -70,9 +103,26 @@ var requestHandler = function(request, response) {
     response.writeHead(postCode, headers);
     response.end('End get request for now...');
 
-  } else if (request.method === 'GET') {
-    response.writeHead(statusCode, headers); 
-    response.end(JSON.stringify(body));
+    // Case if it's our URL and a GET
+  } else if (request.url.toString().indexOf('classes/messages') !== -1 && request.method === 'GET') {
+    console.log('Serving requests on my page---------')
+    fs.readFile('messages.txt', 'utf8', function(err, data){
+      if(err) {
+        console.log('ERROR ---------------->', err);
+        response.writeHead(404);
+        response.write("Not Found!");
+      } else {
+        console.log('DATA IS --------------', JSON.stringify(JSON.parse(data)));
+        response.writeHead(statusCode, headers);
+        response.write(data);
+       }
+      response.end();
+    });
+
+  // Case if url != our url, response 403 
+  } else {
+    response.writeHead(errCode, headers);
+    response.end('Not a valid URL');
   }
 
 
@@ -94,6 +144,22 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
+
+  ///// FUNCTIONS ////////
+
+  function sendFileContent(response, fileName, contentType){
+    fs.readFile(('./client/' + fileName), function(err, data){
+      if(err){
+        response.writeHead(404);
+        response.write("Not Found!");
+      }
+      else{
+        response.writeHead(200, {'Content-Type': contentType});
+        response.write(data);
+      }
+      response.end();
+    });
+  }
 
 };
 
